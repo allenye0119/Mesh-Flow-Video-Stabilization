@@ -32,7 +32,7 @@ def offline_optimize_path(c, iterations=100, window_size=6):
     
     W = np.zeros((c.shape[2], c.shape[2]))
     for t in range(W.shape[0]):
-        for r in range(-window_size/2, window_size/2+1):
+        for r in range(-window_size//2, window_size//2+1):
             if t+r < 0 or t+r >= W.shape[1] or r == 0:
                 continue
             W[t, t+r] = gauss(t, t+r, window_size)

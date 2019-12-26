@@ -4,7 +4,7 @@ import time
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from Optimization import real_time_optimize_path
+from Optimization import real_time_optimize_path, offline_optimize_path, cvx_optimize_path
 from MeshFlow import motion_propagate
 from MeshFlow import mesh_warp_frame
 from MeshFlow import generate_vertex_profiles
@@ -110,7 +110,7 @@ def read_video(cap):
 
 
 @measure_performance
-def stabilize(x_paths, y_paths):
+def stabilize(x_paths, y_paths, mode='real_time'):
     """
     @param: x_paths is motion vector accumulation on 
             mesh vertices in x-direction
@@ -123,8 +123,15 @@ def stabilize(x_paths, y_paths):
     """
 
     # optimize for smooth vertex profiles
-    sx_paths = real_time_optimize_path(x_paths)
-    sy_paths = real_time_optimize_path(y_paths)
+    if mode == 'real_time':
+        sx_paths = real_time_optimize_path(x_paths)
+        sy_paths = real_time_optimize_path(y_paths)
+    elif mode == 'offline':
+        sx_paths = offline_optimize_path(x_paths)
+        sy_paths = offline_optimize_path(y_paths)
+    elif mode == 'cvx':
+        sx_paths = cvx_optimize_path(x_paths)
+        sy_paths = cvx_optimize_path(y_paths)
     return [sx_paths, sy_paths]
 
 
@@ -249,13 +256,14 @@ if __name__ == '__main__':
     # get video properties
     file_name = sys.argv[1]
     output_file = sys.argv[2]
+    mode = sys.argv[3]
     cap = cv2.VideoCapture(file_name)
     
     # propogate motion vectors and generate vertex profiles
     x_motion_meshes, y_motion_meshes, x_paths, y_paths = read_video(cap)
     
     # stabilize the vertex profiles
-    sx_paths, sy_paths = stabilize(x_paths, y_paths)
+    sx_paths, sy_paths = stabilize(x_paths, y_paths, mode)
     
     # visualize optimized paths
     plot_vertex_profiles(x_paths, sx_paths)
