@@ -20,7 +20,7 @@ def measure_performance(method):
         start_time = time.time()
         result = method(*args, **kwargs)
         end_time = time.time()
-        print method.__name__+' has taken: '+str(end_time-start_time)+' sec'
+        print(method.__name__+' has taken: '+str(end_time-start_time)+' sec')
         return result
     return timed
 
@@ -57,21 +57,24 @@ def read_video(cap):
     HORIZONTAL_BORDER = 30
 
     global VERTICAL_BORDER
-    VERTICAL_BORDER = (HORIZONTAL_BORDER*old_gray.shape[1])/old_gray.shape[0]
+    VERTICAL_BORDER = (HORIZONTAL_BORDER*old_gray.shape[1])//old_gray.shape[0]
 
     # motion meshes in x-direction and y-direction
     x_motion_meshes = []; y_motion_meshes = []
 
     # path parameters
-    x_paths = np.zeros((old_frame.shape[0]/PIXELS, old_frame.shape[1]/PIXELS, 1))
-    y_paths = np.zeros((old_frame.shape[0]/PIXELS, old_frame.shape[1]/PIXELS, 1))
+    x_paths = np.zeros((old_frame.shape[0]//PIXELS, old_frame.shape[1]//PIXELS, 1))
+    y_paths = np.zeros((old_frame.shape[0]//PIXELS, old_frame.shape[1]//PIXELS, 1))
 
     frame_num = 1
     bar = tqdm(total=frame_count)
     while frame_num < frame_count:
-
         # processing frames
         ret, frame = cap.read()
+
+        if frame is None:
+            break
+
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # find corners in it
@@ -173,7 +176,7 @@ def get_frame_warp(x_motion_meshes, y_motion_meshes, x_paths, y_paths, sx_paths,
 
 
 @measure_performance
-def generate_stabilized_video(cap, x_motion_meshes, y_motion_meshes, new_x_motion_meshes, new_y_motion_meshes):
+def generate_stabilized_video(cap, x_motion_meshes, y_motion_meshes, new_x_motion_meshes, new_y_motion_meshes, output_file):
     """
     @param: cap is the cv2.VideoCapture object that is
             instantiated with given video
@@ -196,45 +199,44 @@ def generate_stabilized_video(cap, x_motion_meshes, y_motion_meshes, new_x_motio
     
     # generate stabilized video
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('../stable.avi', fourcc, frame_rate, (2*frame_width, frame_height))
+    out = cv2.VideoWriter(output_file, fourcc, frame_rate, (2*frame_width, frame_height))
 
     frame_num = 0
     bar = tqdm(total=frame_count)
     while frame_num < frame_count:
-        try:
-            # reconstruct from frames
-            ret, frame = cap.read()
-            x_motion_mesh = x_motion_meshes[:, :, frame_num]
-            y_motion_mesh = y_motion_meshes[:, :, frame_num]
-            new_x_motion_mesh = new_x_motion_meshes[:, :, frame_num]
-            new_y_motion_mesh = new_y_motion_meshes[:, :, frame_num]
-            
-            # mesh warping
-            new_frame = mesh_warp_frame(frame, new_x_motion_mesh, new_y_motion_mesh)
-            new_frame = new_frame[HORIZONTAL_BORDER:-HORIZONTAL_BORDER, VERTICAL_BORDER:-VERTICAL_BORDER, :]
-            new_frame = cv2.resize(new_frame, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_CUBIC)
-            output = np.concatenate((frame, new_frame), axis=1)
-            out.write(output)
-            
-            # draw old motion vectors
-            r = 5
-            for i in range(x_motion_mesh.shape[0]):
-                for j in range(x_motion_mesh.shape[1]):
-                    theta = np.arctan2(y_motion_mesh[i, j], x_motion_mesh[i, j])
-                    cv2.line(frame, (j*PIXELS, i*PIXELS), (int(j*PIXELS+r*np.cos(theta)), int(i*PIXELS+r*np.sin(theta))), 1)
-            cv2.imwrite('../results/old_motion_vectors/'+str(frame_num)+'.jpg', frame)
-
-            # draw new motion vectors
-            for i in range(new_x_motion_mesh.shape[0]):
-                for j in range(new_x_motion_mesh.shape[1]):
-                    theta = np.arctan2(new_y_motion_mesh[i, j], new_x_motion_mesh[i, j])
-                    cv2.line(new_frame, (j*PIXELS, i*PIXELS), (int(j*PIXELS+r*np.cos(theta)), int(i*PIXELS+r*np.sin(theta))), 1)
-            cv2.imwrite('../results/new_motion_vectors/'+str(frame_num)+'.jpg', new_frame)
-
-            frame_num += 1
-            bar.update(1)
-        except:
+        # reconstruct from frames
+        ret, frame = cap.read()
+        if frame is None:
             break
+        x_motion_mesh = x_motion_meshes[:, :, frame_num]
+        y_motion_mesh = y_motion_meshes[:, :, frame_num]
+        new_x_motion_mesh = new_x_motion_meshes[:, :, frame_num]
+        new_y_motion_mesh = new_y_motion_meshes[:, :, frame_num]
+        
+        # mesh warping
+        new_frame = mesh_warp_frame(frame, new_x_motion_mesh, new_y_motion_mesh)
+        new_frame = new_frame[HORIZONTAL_BORDER:-HORIZONTAL_BORDER, VERTICAL_BORDER:-VERTICAL_BORDER, :]
+        new_frame = cv2.resize(new_frame, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_CUBIC)
+        output = np.concatenate((frame, new_frame), axis=1)
+        out.write(output)
+        
+        # draw old motion vectors
+        r = 5
+        for i in range(x_motion_mesh.shape[0]):
+            for j in range(x_motion_mesh.shape[1]):
+                theta = np.arctan2(y_motion_mesh[i, j], x_motion_mesh[i, j])
+                cv2.line(frame, (j*PIXELS, i*PIXELS), (int(j*PIXELS+r*np.cos(theta)), int(i*PIXELS+r*np.sin(theta))), 1)
+        cv2.imwrite('../results/old_motion_vectors/'+str(frame_num)+'.jpg', frame)
+
+        # draw new motion vectors
+        for i in range(new_x_motion_mesh.shape[0]):
+            for j in range(new_x_motion_mesh.shape[1]):
+                theta = np.arctan2(new_y_motion_mesh[i, j], new_x_motion_mesh[i, j])
+                cv2.line(new_frame, (j*PIXELS, i*PIXELS), (int(j*PIXELS+r*np.cos(theta)), int(i*PIXELS+r*np.sin(theta))), 1)
+        cv2.imwrite('../results/new_motion_vectors/'+str(frame_num)+'.jpg', new_frame)
+
+        frame_num += 1
+        bar.update(1)
     
     bar.close()
     cap.release()
@@ -246,6 +248,7 @@ if __name__ == '__main__':
     start_time = time.time()
     # get video properties
     file_name = sys.argv[1]
+    output_file = sys.argv[2]
     cap = cv2.VideoCapture(file_name)
     
     # propogate motion vectors and generate vertex profiles
@@ -261,5 +264,5 @@ if __name__ == '__main__':
     x_motion_meshes, y_motion_meshes, new_x_motion_meshes, new_y_motion_meshes = get_frame_warp(x_motion_meshes, y_motion_meshes, x_paths, y_paths, sx_paths, sy_paths)
 
     # apply updated mesh warps & save the result
-    generate_stabilized_video(cap, x_motion_meshes, y_motion_meshes, new_x_motion_meshes, new_y_motion_meshes)
-    print 'Time elapsed: ', str(time.time()-start_time)
+    generate_stabilized_video(cap, x_motion_meshes, y_motion_meshes, new_x_motion_meshes, new_y_motion_meshes, output_file)
+    print('Time elapsed: ', str(time.time()-start_time))

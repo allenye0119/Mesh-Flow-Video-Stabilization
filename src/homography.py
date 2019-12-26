@@ -86,7 +86,7 @@ if __name__ == '__main__':
     HORIZONTAL_BORDER = 50
     VERTICAL_BORDER = (HORIZONTAL_BORDER*old_gray.shape[1])/old_gray.shape[0]
 
-    print '--Generation--'
+    print('--Generation--')
     frame_num = 0
     prev_motion = []
     while frame_num < frame_count-2:
@@ -129,7 +129,7 @@ if __name__ == '__main__':
         except:
             break
 
-    print '--Optimization--'
+    print('--Optimization--')
     x = 0; x_path = [];
     y = 0; y_path = [];
     a = 0; a_path = [];
