@@ -206,7 +206,8 @@ def generate_stabilized_video(cap, x_motion_meshes, y_motion_meshes, new_x_motio
     
     # generate stabilized video
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(output_file, fourcc, frame_rate, (2*frame_width, frame_height))
+    # out = cv2.VideoWriter(output_file, fourcc, frame_rate, (2*frame_width, frame_height))
+    out = cv2.VideoWriter(output_file, fourcc, frame_rate, (frame_width, frame_height))
 
     frame_num = 0
     bar = tqdm(total=frame_count)
@@ -224,7 +225,8 @@ def generate_stabilized_video(cap, x_motion_meshes, y_motion_meshes, new_x_motio
         new_frame = mesh_warp_frame(frame, new_x_motion_mesh, new_y_motion_mesh)
         new_frame = new_frame[HORIZONTAL_BORDER:-HORIZONTAL_BORDER, VERTICAL_BORDER:-VERTICAL_BORDER, :]
         new_frame = cv2.resize(new_frame, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_CUBIC)
-        output = np.concatenate((frame, new_frame), axis=1)
+        # output = np.concatenate((frame, new_frame), axis=1)
+        output = new_frame
         out.write(output)
         
         # draw old motion vectors
